@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>微信回复建议</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sessions-panel">
+        <div class="panel-head">
+          <h1>微信回复建议</h1>
+          <button id="refreshSessions" class="icon-button" title="刷新会话">刷新</button>
+        </div>
+        <input id="sessionSearch" class="search" type="search" placeholder="搜索会话" />
+        <div id="sessionList" class="session-list"></div>
+      </aside>
+
+      <main class="chat-panel">
+        <header class="chat-head">
+          <div id="activeSessionName" class="chat-title">请选择一个会话</div>
+          <div id="status" class="status">等待数据</div>
+        </header>
+
+        <div id="personaPanel" class="persona-panel">
+          <div class="persona-head">
+            <label for="personaInput">聊天对象指令 <span id="personaTarget"></span></label>
+            <button id="personaSend" class="icon-button">发送</button>
+          </div>
+          <textarea id="personaInput" class="persona-input" rows="2" placeholder="给 AI 发指令，例如：对方是XXX，语气温柔可爱。可多次发送。"></textarea>
+          <div id="personaList" class="persona-list hidden"></div>
+          <div class="persona-foot">
+            <span id="personaHint"></span>
+            <button id="personaClear" class="icon-button">清空当前指令</button>
+          </div>
+        </div>
+
+        <div id="suggestionBar" class="suggestion-bar hidden">
+          <div class="suggestion-head">
+            <span>AI 候选回复</span>
+            <button id="regenerate" class="icon-button">重新生成</button>
+          </div>
+          <div id="suggestionList" class="suggestion-list"></div>
+        </div>
+
+        <div id="messageList" class="message-list">
+          <div class="empty-state">选择左侧会话后，这里会显示消息；收到新消息时自动给出回复建议。</div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
