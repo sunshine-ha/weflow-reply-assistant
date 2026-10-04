@@ -304,13 +304,12 @@ async function suggestReplies(transcript, count, persona) {
   return suggestions
 }
 
-function pasteToWeChat(text, send = false) {
+function pasteToWeChat(text, send = false, verifyOnly = false) {
   return new Promise((resolve, reject) => {
     const lines = [
       "$ErrorActionPreference = 'SilentlyContinue'",
       '$text = $env:WEFLOW_PASTE_TEXT',
       'if ([string]::IsNullOrEmpty($text)) { exit 2 }',
-      'Set-Clipboard -Value $text',
       'Add-Type -TypeDefinition @"',
       'using System;',
       'using System.Runtime.InteropServices;',
@@ -319,7 +318,9 @@ function pasteToWeChat(text, send = false) {
       '  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);',
       '  [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);',
       '  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);',
+      '  [DllImport("user32.dll")] public static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);',
       '  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);',
+      '  [DllImport("user32.dll")] public static extern IntPtr SetActiveWindow(IntPtr hWnd);',
       '  [DllImport("user32.dll")] public static extern IntPtr SetFocus(IntPtr hWnd);',
       '  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);',
       '  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);',
@@ -347,12 +348,16 @@ function pasteToWeChat(text, send = false) {
       '  [void][Win32Input]::ShowWindow($hwnd, 9)',
       '  [void][Win32Input]::BringWindowToTop($hwnd)',
       '  [void][Win32Input]::SetForegroundWindow($hwnd)',
+      '  [Win32Input]::SwitchToThisWindow($hwnd, $true)',
+      '  [void][Win32Input]::SetActiveWindow($hwnd)',
       '  [void][Win32Input]::SetFocus($hwnd)',
       '  if ($foregroundThread -ne $targetThread) { [void][Win32Input]::AttachThreadInput($foregroundThread, $targetThread, $false) }',
       '  Start-Sleep -Milliseconds 350',
       '  if ([Win32Input]::GetForegroundWindow() -eq $hwnd) { $focused = $true; break }',
       '}',
       'if (-not $focused) { exit 4 }',
+      'if ($env:WEFLOW_PASTE_VERIFY -eq "1") { exit 0 }',
+      'Set-Clipboard -Value $text',
       'Start-Sleep -Milliseconds 250',
       '[Win32Input]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)',
       '[Win32Input]::keybd_event(0x56, 0, 0, [UIntPtr]::Zero)',
@@ -370,7 +375,11 @@ function pasteToWeChat(text, send = false) {
     const encoded = Buffer.from(script, 'utf16le').toString('base64')
     const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
       windowsHide: true,
-      env: { ...process.env, WEFLOW_PASTE_TEXT: text },
+      env: {
+        ...process.env,
+        WEFLOW_PASTE_TEXT: text,
+        WEFLOW_PASTE_VERIFY: verifyOnly ? '1' : '0',
+      },
     })
     let stderr = ''
     child.stderr.on('data', (chunk) => { stderr += chunk })
@@ -463,12 +472,13 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/paste-to-wechat') {
       const text = String(url.searchParams.get('text') || '')
       const send = url.searchParams.get('send') === '1' || url.searchParams.get('send') === 'true'
+      const verifyOnly = url.searchParams.get('verify') === '1'
       if (!text) {
         sendJson(res, 400, { success: false, error: '内容为空' })
         return
       }
       try {
-        await pasteToWeChat(text, send)
+        await pasteToWeChat(text, send, verifyOnly)
         sendJson(res, 200, { success: true })
       } catch (error) {
         sendJson(res, 500, { success: false, error: error && error.message ? error.message : String(error) })
