@@ -63,6 +63,16 @@ DEEPSEEK_MODEL=deepseek-chat
 DEEPSEEK_BASE=https://api.deepseek.com
 ```
 
+使用火山方舟（豆包）时示例：
+
+```env
+DEEPSEEK_API_KEY=你的火山方舟APIKey
+DEEPSEEK_MODEL=doubao-seed-character-260628
+DEEPSEEK_BASE=https://ark.cn-beijing.volces.com/api/v3
+```
+
+`DEEPSEEK_BASE` 填写 API 根地址，不要带 `/chat/completions`；程序也兼容完整接口地址。
+
 ### 4. 提取微信密钥
 
 `setup` 下载的 `weflow` 位于 `runtime/` 目录。用管理员身份打开终端：

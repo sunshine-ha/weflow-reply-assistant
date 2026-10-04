@@ -36,6 +36,9 @@ const WEFLOW_EXE = resolveWeflowExe()
 const DEEPSEEK_API_KEY = String(process.env.DEEPSEEK_API_KEY || '')
 const DEEPSEEK_MODEL = String(process.env.DEEPSEEK_MODEL || 'deepseek-chat')
 const DEEPSEEK_BASE = String(process.env.DEEPSEEK_BASE || 'https://api.deepseek.com').replace(/\/+$/, '')
+const DEEPSEEK_CHAT_URL = /\/chat\/completions$/i.test(DEEPSEEK_BASE)
+  ? DEEPSEEK_BASE
+  : `${DEEPSEEK_BASE}/chat/completions`
 
 let weflowProc = null
 
@@ -274,7 +277,7 @@ async function suggestReplies(transcript, count, persona) {
 1. 只输出一个 JSON 字符串数组，例如 ["好的，没问题","哈哈，我也这么觉得"]。
 2. 不要输出解释、思考过程、Markdown、代码块或数组之外的任何内容。
 3. 每条回复 1 到 40 字，语气自然，彼此不要重复。`
-  const response = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
+  const response = await fetch(DEEPSEEK_CHAT_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
