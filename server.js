@@ -315,7 +315,14 @@ function pasteToWeChat(text, send = false) {
       'using System;',
       'using System.Runtime.InteropServices;',
       'public class Win32Input {',
+      '  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();',
+      '  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);',
+      '  [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);',
       '  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);',
+      '  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);',
+      '  [DllImport("user32.dll")] public static extern IntPtr SetFocus(IntPtr hWnd);',
+      '  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);',
+      '  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);',
       '  [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);',
       '}',
       '"@',
@@ -325,8 +332,28 @@ function pasteToWeChat(text, send = false) {
       '  if ($p) { $target = $p; break }',
       '}',
       'if (-not $target) { exit 3 }',
-      '[Win32Input]::SetForegroundWindow($target.MainWindowHandle) | Out-Null',
-      'Start-Sleep -Milliseconds 700',
+      '$hwnd = $target.MainWindowHandle',
+      '$focused = $false',
+      'for ($attempt = 1; $attempt -le 5; $attempt++) {',
+      '  if ([Win32Input]::IsIconic($hwnd)) { [void][Win32Input]::ShowWindow($hwnd, 9) }',
+      '  [Win32Input]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)',
+      '  [Win32Input]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)',
+      '  Start-Sleep -Milliseconds 120',
+      '  $foreground = [Win32Input]::GetForegroundWindow()',
+      '  [uint32]$foregroundPid = 0; [uint32]$targetPid = 0',
+      '  $foregroundThread = [Win32Input]::GetWindowThreadProcessId($foreground, [ref]$foregroundPid)',
+      '  $targetThread = [Win32Input]::GetWindowThreadProcessId($hwnd, [ref]$targetPid)',
+      '  if ($foregroundThread -ne $targetThread) { [void][Win32Input]::AttachThreadInput($foregroundThread, $targetThread, $true) }',
+      '  [void][Win32Input]::ShowWindow($hwnd, 9)',
+      '  [void][Win32Input]::BringWindowToTop($hwnd)',
+      '  [void][Win32Input]::SetForegroundWindow($hwnd)',
+      '  [void][Win32Input]::SetFocus($hwnd)',
+      '  if ($foregroundThread -ne $targetThread) { [void][Win32Input]::AttachThreadInput($foregroundThread, $targetThread, $false) }',
+      '  Start-Sleep -Milliseconds 350',
+      '  if ([Win32Input]::GetForegroundWindow() -eq $hwnd) { $focused = $true; break }',
+      '}',
+      'if (-not $focused) { exit 4 }',
+      'Start-Sleep -Milliseconds 250',
       '[Win32Input]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)',
       '[Win32Input]::keybd_event(0x56, 0, 0, [UIntPtr]::Zero)',
       '[Win32Input]::keybd_event(0x56, 0, 2, [UIntPtr]::Zero)',
@@ -352,6 +379,7 @@ function pasteToWeChat(text, send = false) {
       if (code === 0) resolve()
       else if (code === 2) reject(new Error('要写入的内容为空'))
       else if (code === 3) reject(new Error('没有找到微信窗口，请先打开微信'))
+      else if (code === 4) reject(new Error('无法切换到微信窗口，请手动点一下微信后重试'))
       else reject(new Error(`写入微信失败（code=${code}）${String(stderr).slice(0, 160)}`))
     })
   })
